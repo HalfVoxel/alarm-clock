@@ -69,23 +69,24 @@ def wake_monitor():
             command = sys.stdin.readline().strip()
             try:
                 parts = command.split(' ')
+                command = parts[0]
                 if parts[0] == "SETTIME":
                     wakeTime = parser.parse(parts[1])
                     stoppedTime = None
                     print("Received new wake time: " + str(wakeTime))
+                if command == "PLAY":
+                    stoppedTime = None
+                    play(" ".join(parts[1:]) if len(parts) > 1 else None)
                 elif command == "STOP":
                     print("Received stop command")
                     stop()
                 else:
                     print("Invalid command: " + command)
-            except e:
+            except Exception as e:
                 print("Invalid command\n" + str(e))
 
         if alarm_time_has_passed() and not is_started(wake_coroutine):
-            print("Waking...")
-            sound = get_audio("audio")
-            wake_coroutine = wake_up(sound)
-            start_coroutine(wake_coroutine)
+            play()
 
         if stoppedTime is not None and datetime.utcnow() >= stoppedTime + timedelta(seconds=30):
             print("Exiting...", file=sys.stderr)
@@ -93,6 +94,12 @@ def wake_monitor():
 
         yield 2
 
+def play(sound):
+    print("Waking...")
+    if sound is None:
+        sound = get_audio("audio")
+    wake_coroutine = wake_up(sound)
+    start_coroutine(wake_coroutine)
 
 def frquency_cutoff_lp(t):
     t = max(t - 10, 0)
@@ -104,7 +111,7 @@ def reverb_balance(t):
 
 
 def volume(t):
-    return min(1, 0.0 + t * 0.02)
+    return min(1, 0.0 + 0.007*t + max(0, t - 5) * 0.013)
 
 
 def get_audio(path):
@@ -129,8 +136,8 @@ def wake_up(sound_file_path):
 
     t = 0
     dt = 0.1
-    alarm_timeout = 90
-    while t < alarm_timeout and alarm_time_has_passed():
+    alarm_timeout = 120
+    while t < alarm_timeout:
         but.setFreq(frquency_cutoff_lp(t))
         # but2.setFreq(frquency_cutoff_hp(t))
         #verb.setBal(reverb_balance(t))
