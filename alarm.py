@@ -40,6 +40,10 @@ def tick():
                 c[0] = datetime.now() + timedelta(0, next(c[1]))
             except StopIteration:
                 coroutines.remove(c)
+            except Exception as e:
+                print("Coroutine threw an exception")
+                print(e)
+                exit(1)
 
 
 def monitor():
@@ -70,11 +74,11 @@ def wake_monitor():
             try:
                 parts = command.split(' ')
                 command = parts[0]
-                if parts[0] == "SETTIME":
+                if command == "SETTIME":
                     wakeTime = parser.parse(parts[1])
                     stoppedTime = None
                     print("Received new wake time: " + str(wakeTime))
-                if command == "PLAY":
+                elif command == "PLAY":
                     stoppedTime = None
                     play(" ".join(parts[1:]) if len(parts) > 1 else None)
                 elif command == "STOP":
@@ -86,7 +90,7 @@ def wake_monitor():
                 print("Invalid command\n" + str(e))
 
         if alarm_time_has_passed() and not is_started(wake_coroutine):
-            play()
+            play(None)
 
         if stoppedTime is not None and datetime.utcnow() >= stoppedTime + timedelta(seconds=30):
             print("Exiting...", file=sys.stderr)
@@ -95,6 +99,7 @@ def wake_monitor():
         yield 2
 
 def play(sound):
+    global wake_coroutine
     print("Waking...")
     if sound is None:
         sound = get_audio("audio")
@@ -153,8 +158,8 @@ def wake_up(sound_file_path):
         yield dt
 
     t = 0
-    while t < 6:
-        s.amp *= math.pow(0.4, dt)
+    while t < 10:
+        s.amp *= math.pow(0.6, dt)
         t += dt
         yield dt
 
